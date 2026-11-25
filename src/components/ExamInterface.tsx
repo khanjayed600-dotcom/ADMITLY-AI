@@ -3,8 +3,6 @@ import {
   AlertTriangle,
   Bookmark,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Grid,
   Send,
@@ -49,7 +47,7 @@ export function ExamInterface({
 
   const totalDurationSeconds = exam.durationMinutes * 60;
   const [secondsLeft, setSecondsLeft] = useState(totalDurationSeconds);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number | null>>({});
   const [markedIds, setMarkedIds] = useState<string[]>([]);
   const [bilingual, setBilingual] = useState(true);
@@ -59,6 +57,7 @@ export function ExamInterface({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const submittingRef = useRef(false);
   const autoSubmittedRef = useRef(false);
+  const questionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -73,13 +72,10 @@ export function ExamInterface({
     return () => window.clearInterval(timer);
   }, []);
 
-  const currentQ = examQuestions[currentIndex];
-
   const answeredCount = examQuestions.filter(
     (q) => answers[q.id] !== undefined && answers[q.id] !== null
   ).length;
   const unansweredCount = examQuestions.length - answeredCount;
-  const isMarked = currentQ ? markedIds.includes(currentQ.id) : false;
 
   const formatTimer = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -87,29 +83,36 @@ export function ExamInterface({
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const handleSelectOption = (optionIndex: number) => {
-    if (!currentQ) return;
+  const handleSelectOption = (questionId: string, idx: number, optionIndex: number) => {
+    setActiveIndex(idx);
     setAnswers((prev) => ({
       ...prev,
-      [currentQ.id]: optionIndex,
+      [questionId]: optionIndex,
     }));
   };
 
-  const handleClearChoice = () => {
-    if (!currentQ) return;
+  const handleClearChoice = (questionId: string) => {
     setAnswers((prev) => ({
       ...prev,
-      [currentQ.id]: null,
+      [questionId]: null,
     }));
   };
 
-  const toggleMarkForReview = () => {
-    if (!currentQ) return;
+  const toggleMarkForReview = (questionId: string, idx: number) => {
+    setActiveIndex(idx);
     setMarkedIds((prev) =>
-      prev.includes(currentQ.id)
-        ? prev.filter((id) => id !== currentQ.id)
-        : [...prev, currentQ.id]
+      prev.includes(questionId)
+        ? prev.filter((id) => id !== questionId)
+        : [...prev, questionId]
     );
+  };
+
+  const scrollToQuestion = (idx: number, questionId: string) => {
+    setActiveIndex(idx);
+    const el = questionRefs.current[questionId];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const handleFinalSubmit = useCallback(async () => {
@@ -143,7 +146,7 @@ export function ExamInterface({
     }
   }, [secondsLeft, examQuestions.length, handleFinalSubmit]);
 
-  if (!currentQ) {
+  if (examQuestions.length === 0) {
     return (
       <div className="min-h-screen bg-[#F7F8FC] flex items-center justify-center p-6">
         <div className="card-surface max-w-md w-full rounded-2xl p-6 text-center">
@@ -174,14 +177,24 @@ export function ExamInterface({
                 {exam.universityTrack}
               </span>
               <span aria-hidden="true">·</span>
-              <span className="truncate font-medium">{currentQ.subjectName}</span>
+              <span className="font-mono-num font-medium">
+                মোট {examQuestions.length}টি প্রশ্ন
+              </span>
             </div>
             <h1 className="font-display text-[15px] sm:text-base font-bold text-[#172033] truncate">
               {exam.title}
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setBilingual((b) => !b)}
+              className="hidden sm:inline-flex min-h-[38px] items-center px-3 py-1.5 rounded-xl bg-[#F7F8FC] border border-[#E8ECF3] text-xs font-medium text-[#64748B] hover:text-[#172033] transition-colors whitespace-nowrap"
+            >
+              {bilingual ? 'বাংলা + EN' : 'শুধু EN'}
+            </button>
+
             <div
               className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 font-mono-num text-sm sm:text-base font-bold ${
                 timerLow
@@ -195,6 +208,7 @@ export function ExamInterface({
             </div>
 
             <button
+              type="button"
               onClick={() => setConfirmOpen(true)}
               className="min-h-[40px] px-3.5 sm:px-4 py-2 rounded-xl bg-[#059669] hover:bg-[#047857] text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap"
             >
@@ -205,150 +219,171 @@ export function ExamInterface({
         </div>
       </header>
 
-      {/* Two-Zone Exam Body */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-28 lg:pb-10">
-        <div className="lg:col-span-8 flex flex-col justify-between gap-6">
-          <div className="card-surface rounded-2xl p-5 sm:p-7">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#E8ECF3]">
-              <div className="flex items-center gap-2 text-xs text-[#64748B]">
-                <span className="font-mono-num text-sm font-semibold text-[#172033]">
-                  প্রশ্ন {currentIndex + 1} / {examQuestions.length}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span>{currentQ.subjectName}</span>
-                <span aria-hidden="true">·</span>
-                <span>{currentQ.chapter}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setBilingual((b) => !b)}
-                  className="px-2.5 py-1.5 rounded-lg bg-[#F7F8FC] border border-[#E8ECF3] text-xs text-[#64748B] hover:text-[#172033] transition-colors"
-                >
-                  {bilingual ? 'বাংলা + EN' : 'শুধু EN'}
-                </button>
-                <button
-                  onClick={toggleMarkForReview}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                    isMarked
-                      ? 'bg-[#FEF3C7] border-[#F59E0B]/50 text-[#B45309]'
-                      : 'bg-[#F7F8FC] border-[#E8ECF3] text-[#64748B] hover:text-[#172033]'
-                  }`}
-                >
-                  <Bookmark className="w-3.5 h-3.5" />
-                  <span>{isMarked ? 'চিহ্নিত' : 'পর্যালোচনার জন্য রাখুন'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-2.5">
-              <div className="text-[17px] sm:text-[19px] font-medium text-[#172033] leading-[1.55]">
-                <MathText text={currentQ.prompt} />
-              </div>
-              {bilingual && currentQ.promptBn && (
-                <div className="text-[15px] sm:text-[16px] text-[#64748B] leading-[1.65]">
-                  <MathText text={currentQ.promptBn} />
-                </div>
-              )}
-              {currentQ.imageUrl && (
-                <img
-                  src={currentQ.imageUrl}
-                  alt="প্রশ্নের চিত্র"
-                  className="max-h-60 rounded-xl border border-[#E8ECF3] object-contain bg-[#F7F8FC] p-2 mt-2"
-                />
-              )}
-            </div>
-
-            <div className="mt-6 space-y-3">
-              {currentQ.options.map((opt, idx) => {
-                const selected = answers[currentQ.id] === idx;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => handleSelectOption(idx)}
-                    className={`w-full min-h-[54px] px-4 py-3.5 rounded-xl border text-left flex items-center justify-between gap-3 transition-all active:scale-[0.995] ${
-                      selected
-                        ? 'bg-[#EEF2FF] border-[#4F46E5] text-[#172033] ring-1 ring-[#4F46E5]/30'
-                        : 'bg-[#F7F8FC] border-[#E8ECF3] text-[#172033] hover:bg-white hover:border-[#CBD5E1]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <span
-                        className={`w-7 h-7 rounded-lg font-mono-num text-xs font-semibold flex items-center justify-center shrink-0 transition-colors ${
-                          selected
-                            ? 'bg-[#4F46E5] text-white'
-                            : 'bg-white text-[#64748B] border border-[#E8ECF3]'
-                        }`}
-                      >
-                        {String.fromCharCode(65 + idx)}
-                      </span>
-                      <span
-                        className={`text-[15px] sm:text-base leading-[1.45] ${
-                          selected ? 'font-semibold' : 'font-normal'
-                        }`}
-                      >
-                        <MathText text={opt} />
-                      </span>
-                    </div>
-                    {selected && (
-                      <Check className="w-4 h-4 text-[#4F46E5] shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-5 flex items-center justify-between text-xs text-[#64748B]">
-              <span>প্রতি ভুল উত্তরে নেগেটিভ মার্কিং: -{exam.negativeMarking}</span>
-              {answers[currentQ.id] !== undefined &&
-                answers[currentQ.id] !== null && (
-                  <button
-                    onClick={handleClearChoice}
-                    className="text-[#4F46E5] hover:underline underline-offset-2 font-medium"
-                  >
-                    উত্তর মুছে ফেলুন
-                  </button>
-                )}
-            </div>
+      {/* Two-Zone Exam Body: Full Vertical Question Paper + Sticky Palette */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-28 lg:pb-12">
+        <div className="lg:col-span-8 space-y-5">
+          {/* Exam Paper Intro & Mobile Bilingual Switch */}
+          <div className="card-surface rounded-2xl px-5 py-3.5 flex flex-wrap items-center justify-between gap-2 text-xs text-[#64748B]">
+            <span>
+              সকল প্রশ্ন নিচে একসাথে দেওয়া হলো — প্রতিটি প্রশ্নের সঠিক অপশন বেছে নিয়ে শেষে{' '}
+              <strong className="text-[#172033]">জমা দিন</strong> বাটনে ক্লিক করুন।
+            </span>
+            <button
+              type="button"
+              onClick={() => setBilingual((b) => !b)}
+              className="sm:hidden px-2.5 py-1 rounded-lg bg-[#F7F8FC] border border-[#E8ECF3] text-xs font-medium text-[#64748B]"
+            >
+              {bilingual ? 'বাংলা + EN' : 'শুধু EN'}
+            </button>
           </div>
 
-          <div className="hidden lg:flex items-center justify-between gap-4">
+          {examQuestions.map((q, qIdx) => {
+            const selectedOption = answers[q.id];
+            const isAnswered =
+              selectedOption !== undefined && selectedOption !== null;
+            const isMarked = markedIds.includes(q.id);
+            const hasDistinctPromptBn =
+              Boolean(q.promptBn?.trim()) &&
+              q.promptBn?.trim() !== q.prompt.trim();
+
+            return (
+              <article
+                key={q.id}
+                id={`exam-q-${q.id}`}
+                ref={(el) => {
+                  questionRefs.current[q.id] = el;
+                }}
+                className={`card-surface rounded-2xl p-5 sm:p-7 transition-colors ${
+                  isAnswered
+                    ? 'border-[#4F46E5]/35'
+                    : isMarked
+                      ? 'border-[#F59E0B]/45'
+                      : ''
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#E8ECF3]">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#64748B]">
+                    <span className="font-mono-num text-sm font-bold text-[#172033]">
+                      প্রশ্ন {String(qIdx + 1).padStart(2, '0')} / {examQuestions.length}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span className="font-medium text-[#334155]">
+                      {q.subjectName}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>{q.chapter}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleMarkForReview(q.id, qIdx)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+                      isMarked
+                        ? 'bg-[#FEF3C7] border-[#F59E0B]/50 text-[#B45309]'
+                        : 'bg-[#F7F8FC] border-[#E8ECF3] text-[#64748B] hover:text-[#172033]'
+                    }`}
+                  >
+                    <Bookmark className="w-3.5 h-3.5" />
+                    <span>{isMarked ? 'চিহ্নিত' : 'পর্যালোচনার জন্য রাখুন'}</span>
+                  </button>
+                </div>
+
+                <div className="mt-5 space-y-2.5">
+                  <div className="text-[16.5px] sm:text-[18px] font-medium text-[#172033] leading-[1.6]">
+                    <MathText text={q.prompt} />
+                  </div>
+                  {bilingual && hasDistinctPromptBn && (
+                    <div className="text-[15px] sm:text-[15.5px] text-[#64748B] leading-[1.65]">
+                      <MathText text={q.promptBn!} />
+                    </div>
+                  )}
+                  {q.imageUrl && (
+                    <img
+                      src={q.imageUrl}
+                      alt={`প্রশ্ন ${qIdx + 1}-এর চিত্র`}
+                      className="max-h-60 rounded-xl border border-[#E8ECF3] object-contain bg-[#F7F8FC] p-2 mt-2"
+                    />
+                  )}
+                </div>
+
+                <div className="mt-5 space-y-2.5">
+                  {q.options.map((opt, idx) => {
+                    const selected = selectedOption === idx;
+                    return (
+                      <button
+                        type="button"
+                        key={idx}
+                        onClick={() => handleSelectOption(q.id, qIdx, idx)}
+                        className={`w-full min-h-[52px] px-4 py-3 rounded-xl border text-left flex items-center justify-between gap-3 transition-all active:scale-[0.995] ${
+                          selected
+                            ? 'bg-[#EEF2FF] border-[#4F46E5] text-[#172033] ring-1 ring-[#4F46E5]/30'
+                            : 'bg-[#F7F8FC] border-[#E8ECF3] text-[#172033] hover:bg-white hover:border-[#CBD5E1]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <span
+                            className={`w-7 h-7 rounded-lg font-mono-num text-xs font-semibold flex items-center justify-center shrink-0 transition-colors ${
+                              selected
+                                ? 'bg-[#4F46E5] text-white'
+                                : 'bg-white text-[#64748B] border border-[#E8ECF3]'
+                            }`}
+                          >
+                            {String.fromCharCode(65 + idx)}
+                          </span>
+                          <span
+                            className={`text-[15px] sm:text-base leading-[1.45] ${
+                              selected ? 'font-semibold' : 'font-normal'
+                            }`}
+                          >
+                            <MathText text={opt} />
+                          </span>
+                        </div>
+                        {selected && (
+                          <Check className="w-4 h-4 text-[#4F46E5] shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between text-xs text-[#64748B]">
+                  <span>প্রতি ভুল উত্তরে নেগেটিভ মার্কিং: -{exam.negativeMarking}</span>
+                  {isAnswered && (
+                    <button
+                      type="button"
+                      onClick={() => handleClearChoice(q.id)}
+                      className="text-[#4F46E5] hover:underline underline-offset-2 font-medium"
+                    >
+                      উত্তর মুছে ফেলুন
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+
+          {/* Desktop Bottom Submit Bar */}
+          <div className="hidden lg:flex items-center justify-between gap-4 pt-2">
             <button
+              type="button"
               onClick={onCancel}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-white border border-[#E8ECF3] text-xs font-semibold text-[#64748B] hover:text-[#172033]"
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-white border border-[#E8ECF3] text-xs font-semibold text-[#64748B] hover:text-[#172033] whitespace-nowrap"
             >
               পরীক্ষা থেকে বের হন
             </button>
+
             <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-[#64748B] font-mono-num">
+                {answeredCount}/{examQuestions.length} উত্তরিত
+              </span>
               <button
-                disabled={currentIndex === 0}
-                onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-                className="min-h-[44px] px-4 py-2 rounded-xl bg-white border border-[#E8ECF3] text-sm font-semibold text-[#172033] disabled:opacity-40 flex items-center gap-1.5"
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                className="min-h-[46px] px-6 py-2.5 rounded-xl bg-[#059669] hover:bg-[#047857] text-white text-sm font-semibold flex items-center gap-2 transition-colors whitespace-nowrap shadow-xs"
               >
-                <ChevronLeft className="w-4 h-4" />
-                <span>পূর্ববর্তী</span>
+                <Send className="w-4 h-4" />
+                <span>পর্যালোচনা ও জমা দিন</span>
               </button>
-              {currentIndex < examQuestions.length - 1 ? (
-                <button
-                  onClick={() =>
-                    setCurrentIndex((i) =>
-                      Math.min(examQuestions.length - 1, i + 1)
-                    )
-                  }
-                  className="min-h-[44px] px-5 py-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-semibold flex items-center gap-1.5"
-                >
-                  <span>পরবর্তী</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => setConfirmOpen(true)}
-                  className="min-h-[44px] px-5 py-2 rounded-xl bg-[#059669] hover:bg-[#047857] text-white text-sm font-semibold flex items-center gap-1.5"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>পর্যালোচনা ও জমা দিন</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -367,7 +402,7 @@ export function ExamInterface({
 
             <div className="grid grid-cols-5 gap-2">
               {examQuestions.map((q, idx) => {
-                const isCurr = idx === currentIndex;
+                const isCurr = idx === activeIndex;
                 const isAns =
                   answers[q.id] !== undefined && answers[q.id] !== null;
                 const isRev = markedIds.includes(q.id);
@@ -387,8 +422,9 @@ export function ExamInterface({
 
                 return (
                   <button
+                    type="button"
                     key={q.id}
-                    onClick={() => setCurrentIndex(idx)}
+                    onClick={() => scrollToQuestion(idx, q.id)}
                     className={`h-10 rounded-xl border font-mono-num text-xs font-semibold transition-all ${btnClass}`}
                   >
                     {idx + 1}
@@ -417,63 +453,52 @@ export function ExamInterface({
                 </span>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              className="mt-5 w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-[#059669] hover:bg-[#047857] text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors whitespace-nowrap"
+            >
+              <Send className="w-4 h-4" />
+              <span>পরীক্ষা জমা দিন</span>
+            </button>
           </div>
         </aside>
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E8ECF3] px-4 py-2.5 flex items-center justify-between gap-2">
+      {/* Mobile Bottom Action Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E8ECF3] px-4 py-2.5 flex items-center justify-between gap-2.5">
         <button
-          disabled={currentIndex === 0}
-          onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-          className="min-h-[44px] px-3.5 rounded-xl bg-[#F7F8FC] border border-[#E8ECF3] text-xs font-medium text-[#172033] disabled:opacity-40 flex items-center gap-1"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>আগের</span>
-        </button>
-
-        <button
+          type="button"
           onClick={() => setPaletteOpenMobile(true)}
-          className="min-h-[44px] px-3.5 rounded-xl bg-[#EEF2FF] text-xs font-medium text-[#4F46E5] flex items-center gap-1.5"
+          className="min-h-[44px] px-4 rounded-xl bg-[#EEF2FF] text-xs font-semibold text-[#4F46E5] flex items-center gap-2 whitespace-nowrap"
         >
           <Grid className="w-4 h-4" />
           <span className="font-mono-num">
-            {answeredCount}/{examQuestions.length}
+            প্রশ্ন তালিকা ({answeredCount}/{examQuestions.length})
           </span>
         </button>
 
-        {currentIndex < examQuestions.length - 1 ? (
-          <button
-            onClick={() =>
-              setCurrentIndex((i) =>
-                Math.min(examQuestions.length - 1, i + 1)
-              )
-            }
-            className="min-h-[44px] px-4 rounded-xl bg-[#4F46E5] text-white text-xs font-medium flex items-center gap-1"
-          >
-            <span>পরবর্তী</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            onClick={() => setConfirmOpen(true)}
-            className="min-h-[44px] px-4 rounded-xl bg-[#059669] text-white text-xs font-medium flex items-center gap-1"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>জমা দিন</span>
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          className="flex-1 min-h-[44px] px-4 rounded-xl bg-[#059669] hover:bg-[#047857] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 whitespace-nowrap"
+        >
+          <Send className="w-3.5 h-3.5" />
+          <span>পর্যালোচনা ও জমা দিন</span>
+        </button>
       </div>
 
       {/* Mobile Palette Sheet */}
       {paletteOpenMobile && (
         <div className="lg:hidden fixed inset-0 z-40 bg-[#172033]/40 backdrop-blur-xs flex items-end">
-          <div className="w-full rounded-t-3xl bg-white border-t border-[#E8ECF3] p-5 pb-8 shadow-xl">
+          <div className="w-full rounded-t-3xl bg-white border-t border-[#E8ECF3] p-5 pb-8 shadow-xl max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display text-base font-semibold text-[#172033]">
-                প্রশ্ন প্যালেট
+                প্রশ্ন প্যালেট ({answeredCount}/{examQuestions.length})
               </h3>
               <button
+                type="button"
                 onClick={() => setPaletteOpenMobile(false)}
                 className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-[#64748B]"
               >
@@ -482,7 +507,7 @@ export function ExamInterface({
             </div>
             <div className="grid grid-cols-5 gap-2.5">
               {examQuestions.map((q, idx) => {
-                const isCurr = idx === currentIndex;
+                const isCurr = idx === activeIndex;
                 const isAns =
                   answers[q.id] !== undefined && answers[q.id] !== null;
                 const isRev = markedIds.includes(q.id);
@@ -495,10 +520,11 @@ export function ExamInterface({
 
                 return (
                   <button
+                    type="button"
                     key={q.id}
                     onClick={() => {
-                      setCurrentIndex(idx);
                       setPaletteOpenMobile(false);
+                      scrollToQuestion(idx, q.id);
                     }}
                     className={`h-11 rounded-xl border font-mono-num text-sm font-semibold ${cls}`}
                   >
@@ -508,6 +534,7 @@ export function ExamInterface({
               })}
             </div>
             <button
+              type="button"
               onClick={onCancel}
               className="mt-5 w-full min-h-[44px] rounded-xl bg-[#F7F8FC] border border-[#E8ECF3] text-xs font-medium text-[#64748B]"
             >
@@ -572,6 +599,7 @@ export function ExamInterface({
 
             <div className="mt-6 flex items-center justify-end gap-3">
               <button
+                type="button"
                 disabled={submitting}
                 onClick={() => setConfirmOpen(false)}
                 className="min-h-[44px] px-4 py-2 rounded-xl bg-[#F7F8FC] border border-[#E8ECF3] text-sm font-semibold text-[#64748B] hover:text-[#172033]"
@@ -579,6 +607,7 @@ export function ExamInterface({
                 পরীক্ষা চালিয়ে যান
               </button>
               <button
+                type="button"
                 disabled={submitting}
                 onClick={handleFinalSubmit}
                 className="min-h-[44px] px-5 py-2 rounded-xl bg-[#059669] hover:bg-[#047857] text-white text-sm font-semibold disabled:opacity-60"

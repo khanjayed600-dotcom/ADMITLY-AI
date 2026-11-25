@@ -93,6 +93,9 @@ export default function App() {
 
   const loadBootstrap = useCallback(async () => {
     const payload = await api.bootstrap();
+    if (!payload?.student) {
+      throw new Error('শিক্ষার্থীর প্রোফাইল তথ্য পাওয়া যায়নি।');
+    }
     setData(payload);
     setLoadError(null);
     return payload;
@@ -103,6 +106,7 @@ export default function App() {
     api
       .bootstrap()
       .then((res) => {
+        if (!res?.student) return;
         setData(res);
         setLoadError(null);
       })
@@ -118,10 +122,13 @@ export default function App() {
       try {
         const session = await api.authMe();
         if (!mounted) return;
-        if (session.authenticated) {
+        if (session?.authenticated && session.student) {
           setStudentToken(session.token ?? null);
           setIsAuthenticated(true);
           const payload = await api.bootstrap();
+          if (!payload?.student) {
+            throw new Error('শিক্ষার্থীর প্রোফাইল তথ্য পাওয়া যায়নি।');
+          }
           if (mounted) {
             setData(payload);
             setLoadError(null);
@@ -238,7 +245,7 @@ export default function App() {
           ? {
               ...prev,
               dailyChallenge: res.dailyChallenge,
-              student: res.student,
+              student: res.student ?? prev.student,
             }
           : prev
       );
@@ -263,7 +270,9 @@ export default function App() {
   const handleChangeTrack = async (track: UniversityTrack) => {
     try {
       const res = await api.updateTargetTrack(track);
-      setData((prev) => (prev ? { ...prev, student: res.student } : prev));
+      if (res?.student) {
+        setData((prev) => (prev ? { ...prev, student: res.student } : prev));
+      }
       pushToast('info', `Target University ${track} নির্ধারণ করা হয়েছে`);
     } catch (err) {
       pushToast(
@@ -275,6 +284,7 @@ export default function App() {
   };
 
   const handleStudentUpdated = (updatedStudent: StudentProfile) => {
+    if (!updatedStudent) return;
     setData((prev) => (prev ? { ...prev, student: updatedStudent } : prev));
   };
 
@@ -290,11 +300,11 @@ export default function App() {
       prev
         ? {
             ...prev,
-            student: res.student,
-            subjects: res.subjects,
-            weeklyPerformance: res.weeklyPerformance,
-            leaderboard: res.leaderboard,
-            attempts: res.attempts,
+            student: res.student ?? prev.student,
+            subjects: res.subjects ?? prev.subjects,
+            weeklyPerformance: res.weeklyPerformance ?? prev.weeklyPerformance,
+            leaderboard: res.leaderboard ?? prev.leaderboard,
+            attempts: res.attempts ?? prev.attempts,
           }
         : prev
     );
@@ -384,13 +394,14 @@ export default function App() {
   ];
 
   const primaryQuickExam =
-    data?.exams.find(
+    data?.exams?.find(
       (e) =>
         e.status === 'available' &&
+        Boolean(data?.student?.targetTrack) &&
         e.universityTrack === data.student.targetTrack
-    ) ?? data?.exams.find((e) => e.status === 'available');
+    ) ?? data?.exams?.find((e) => e.status === 'available');
 
-  const upcomingExam = data?.exams.find((e) => e.status === 'upcoming');
+  const upcomingExam = data?.exams?.find((e) => e.status === 'upcoming');
 
   return (
     <div className="min-h-screen bg-[#F7F8FC] text-[#172033] flex">
@@ -436,7 +447,7 @@ export default function App() {
           </nav>
         </div>
 
-        {data && (
+        {data?.student && (
           <div className="pt-4 border-t border-[#E8ECF3] space-y-2">
             <button
               onClick={() =>
@@ -528,15 +539,15 @@ export default function App() {
               aria-label="বিজ্ঞপ্তি"
             >
               <Bell className="w-4 h-4" />
-              {data &&
-                (data.notifications.some((n) => !n.isRead) ||
-                  (!data.dailyChallenge.completed &&
-                    Boolean(data.dailyChallenge.question))) && (
+              {data?.student &&
+                (data.notifications?.some((n) => !n.isRead) ||
+                  (!data.dailyChallenge?.completed &&
+                    Boolean(data.dailyChallenge?.question))) && (
                   <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#4F46E5]" />
                 )}
             </button>
 
-            {data && (
+            {data?.student && (
               <button
                 onClick={() => {
                   setNotificationsOpen(false);
@@ -555,7 +566,7 @@ export default function App() {
             )}
 
             {/* Notifications Popover */}
-            {notificationsOpen && data && (
+            {notificationsOpen && data?.student && (
               <div className="absolute right-0 top-12 w-72 sm:w-80 card-surface rounded-2xl p-4 shadow-xl z-40 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="font-display text-[13px] font-semibold text-[#172033]">
@@ -569,7 +580,7 @@ export default function App() {
                   </button>
                 </div>
                 <div className="divide-y divide-[#E8ECF3] text-[13px] max-h-80 overflow-y-auto">
-                  {data.dailyChallenge.question && (
+                  {data.dailyChallenge?.question && (
                     <button
                       onClick={() => {
                         setNotificationsOpen(false);
@@ -604,7 +615,7 @@ export default function App() {
                       </p>
                     </button>
                   )}
-                  {data.notifications.map((notif) => (
+                  {(data.notifications ?? []).map((notif) => (
                     <div key={notif.id} className="py-2.5 text-left">
                       <p className="font-semibold text-[#172033]">{notif.title}</p>
                       <p className="text-xs text-[#64748B] mt-0.5 leading-relaxed">
@@ -612,9 +623,9 @@ export default function App() {
                       </p>
                     </div>
                   ))}
-                  {!data.dailyChallenge.question &&
+                  {!data.dailyChallenge?.question &&
                     !upcomingExam &&
-                    data.notifications.length === 0 && (
+                    (data.notifications?.length ?? 0) === 0 && (
                       <p className="py-5 text-center text-xs text-[#64748B]">
                         নতুন কোনো বিজ্ঞপ্তি নেই
                       </p>
@@ -624,7 +635,7 @@ export default function App() {
             )}
 
             {/* Profile Dropdown Menu */}
-            {profileMenuOpen && data && (
+            {profileMenuOpen && data?.student && (
               <div className="absolute right-0 top-12 w-64 card-surface rounded-2xl p-2 shadow-xl z-40 space-y-1">
                 <div className="px-3 py-2.5 border-b border-[#E8ECF3]">
                   <p className="text-sm font-semibold text-[#172033] truncate">
@@ -679,7 +690,7 @@ export default function App() {
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-24 lg:pb-12">
           {loading ? (
             <SkeletonScreen />
-          ) : loadError || !data ? (
+          ) : loadError || !data?.student ? (
             <div className="card-surface rounded-2xl p-8 text-center max-w-lg mx-auto my-12">
               <p className="text-base font-semibold text-[#172033]">
                 প্ল্যাটফর্ম লোড করা যাচ্ছে না

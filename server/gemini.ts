@@ -10,8 +10,7 @@ import type {
 } from '../src/types';
 import { logAiUsage } from './store';
 
-const MODEL_NAME = 'gemini-4-hydrogen';
-const FALLBACK_MODEL_NAME = 'gemini-3.1-flash-lite';
+const MODEL_NAME = 'gemini-3.1-flash-lite';
 
 function isTransientGeminiError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -35,39 +34,29 @@ async function generateContentResilient(
   ai: GoogleGenAI,
   request: Omit<Parameters<GoogleGenAI['models']['generateContent']>[0], 'model'>
 ) {
-  const modelsToTry = [MODEL_NAME, FALLBACK_MODEL_NAME];
+  const maxAttempts = 3;
   let lastErr: unknown;
 
-  for (const model of modelsToTry) {
-    const attempts = model === MODEL_NAME ? 2 : 2;
-    for (let attempt = 0; attempt < attempts; attempt++) {
-      try {
-        const baseConfig =
-          model === FALLBACK_MODEL_NAME && request.config && 'thinkingConfig' in request.config
-            ? (() => {
-                const { thinkingConfig: _omit, ...rest } = request.config as Record<string, unknown>;
-                return rest;
-              })()
-            : (request.config ?? {});
-        const config = {
-          ...baseConfig,
-          abortSignal: AbortSignal.timeout(45_000),
-        };
-        return await ai.models.generateContent({
-          ...request,
-          model,
-          config,
-        });
-      } catch (err) {
-        lastErr = err;
-        const isTimeout =
-          err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
-        if (!isTransientGeminiError(err) && !isTimeout) {
-          throw err;
-        }
-        if (attempt < attempts - 1) {
-          await sleep(800 * (attempt + 1));
-        }
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const config = {
+        ...(request.config ?? {}),
+        abortSignal: AbortSignal.timeout(45_000),
+      };
+      return await ai.models.generateContent({
+        ...request,
+        model: MODEL_NAME,
+        config,
+      });
+    } catch (err) {
+      lastErr = err;
+      const isTimeout =
+        err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+      if (!isTransientGeminiError(err) && !isTimeout) {
+        throw err;
+      }
+      if (attempt < maxAttempts - 1) {
+        await sleep(800 * (attempt + 1));
       }
     }
   }
@@ -704,7 +693,7 @@ STRICT ACCURACY & FORMATTING RULES (MANDATORY):
           systemInstruction: instruction,
           responseMimeType: 'application/json',
           responseSchema,
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         },
       });
       const parsed = JSON.parse((response.text ?? '[]').trim()) as RawExtractedQuestion[];

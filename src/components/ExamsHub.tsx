@@ -33,6 +33,14 @@ const BASE_FILTERS: Array<'All' | UniversityTrack> = [
   'Jahangirnagar University',
   'Chittagong University',
   'Engineering',
+  'Physics 1st Paper',
+  'Physics 2nd Paper',
+  'Chemistry 1st Paper',
+  'Chemistry 2nd Paper',
+  'Biology 1st Paper',
+  'Biology 2nd Paper',
+  'Mathematics 1st Paper',
+  'Mathematics 2nd Paper',
   'Other',
 ];
 
@@ -328,7 +336,7 @@ export function ExamsHub({
                 <div className="text-[15px] sm:text-base font-medium text-[#172033] leading-[1.6]">
                   <MathText text={q.prompt} />
                 </div>
-                {q.promptBn && (
+                {q.promptBn && q.promptBn.trim() !== q.prompt.trim() && (
                   <div className="text-[14.5px] sm:text-[15px] text-[#64748B] leading-[1.65]">
                     <MathText text={q.promptBn} />
                   </div>

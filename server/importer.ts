@@ -38,7 +38,9 @@ export function normalizeAdmissionCategory(
   raw: string,
   fallback: AdmissionCategory = 'DU Ka'
 ): AdmissionCategory {
-  const s = (raw || '').toLowerCase();
+  const s = (raw || '').toLowerCase().trim();
+  const exact = ADMISSION_CATEGORIES.find((c) => c.toLowerCase() === s);
+  if (exact) return exact;
   if (s.includes('gst') || s.includes('cluster') || s.includes('গুচ্ছ')) return 'GST';
   const isDu =
     s.includes('dhaka') ||
@@ -79,13 +81,13 @@ export function normalizeAdmissionCategory(
   ) {
     return 'Engineering';
   }
-  const exact = ADMISSION_CATEGORIES.find((c) => c.toLowerCase() === s.trim());
-  if (exact) return exact;
   return s.includes('other') ? 'Other' : fallback;
 }
 
 function normalizeTrack(raw: string, category: AdmissionCategory, fallback: UniversityTrack): UniversityTrack {
-  const s = (raw || '').toLowerCase();
+  const s = (raw || '').toLowerCase().trim();
+  const exactCat = ADMISSION_CATEGORIES.find((c) => c.toLowerCase() === s);
+  if (exactCat) return exactCat;
   if (s.includes('buet')) return 'BUET';
   if (s.includes('ckruet') || s.includes('cuet') || s.includes('ruet') || s.includes('kuet')) {
     return 'CKRUET';
@@ -106,16 +108,7 @@ function normalizeTrack(raw: string, category: AdmissionCategory, fallback: Univ
   ) {
     return 'DU Ka';
   }
-  if (category === 'Engineering') return 'Engineering';
-  if (category === 'GST') return 'GST';
-  if (category === 'DU Ka') return 'DU Ka';
-  if (category === 'DU Kha') return 'DU Kha';
-  if (category === 'Rajshahi University') return 'Rajshahi University';
-  if (category === 'Jahangirnagar University') return 'Jahangirnagar University';
-  if (category === 'Chittagong University') return 'Chittagong University';
-  if (category === 'Medical') return 'Medical';
-  if (category === 'Other') return 'Other';
-  return fallback;
+  return category || fallback;
 }
 
 function normalizeDifficulty(

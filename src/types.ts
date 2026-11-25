@@ -9,6 +9,14 @@ export type UniversityTrack =
   | 'Jahangirnagar University'
   | 'Chittagong University'
   | 'Engineering'
+  | 'Physics 1st Paper'
+  | 'Physics 2nd Paper'
+  | 'Chemistry 1st Paper'
+  | 'Chemistry 2nd Paper'
+  | 'Biology 1st Paper'
+  | 'Biology 2nd Paper'
+  | 'Mathematics 1st Paper'
+  | 'Mathematics 2nd Paper'
   | 'Other';
 
 export type AdmissionCategory =
@@ -20,6 +28,14 @@ export type AdmissionCategory =
   | 'Chittagong University'
   | 'Medical'
   | 'Engineering'
+  | 'Physics 1st Paper'
+  | 'Physics 2nd Paper'
+  | 'Chemistry 1st Paper'
+  | 'Chemistry 2nd Paper'
+  | 'Biology 1st Paper'
+  | 'Biology 2nd Paper'
+  | 'Mathematics 1st Paper'
+  | 'Mathematics 2nd Paper'
   | 'Other';
 
 export const ADMISSION_CATEGORIES: AdmissionCategory[] = [
@@ -31,6 +47,14 @@ export const ADMISSION_CATEGORIES: AdmissionCategory[] = [
   'Chittagong University',
   'Medical',
   'Engineering',
+  'Physics 1st Paper',
+  'Physics 2nd Paper',
+  'Chemistry 1st Paper',
+  'Chemistry 2nd Paper',
+  'Biology 1st Paper',
+  'Biology 2nd Paper',
+  'Mathematics 1st Paper',
+  'Mathematics 2nd Paper',
   'Other',
 ];
 

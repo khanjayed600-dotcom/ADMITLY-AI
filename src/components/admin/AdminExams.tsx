@@ -312,6 +312,14 @@ export function AdminExams({ onExamsChanged, onToast }: AdminExamsProps) {
                 <option value="Jahangirnagar University">Jahangirnagar University</option>
                 <option value="Chittagong University">Chittagong University</option>
                 <option value="Engineering">Engineering</option>
+                <option value="Physics 1st Paper">Physics 1st Paper</option>
+                <option value="Physics 2nd Paper">Physics 2nd Paper</option>
+                <option value="Chemistry 1st Paper">Chemistry 1st Paper</option>
+                <option value="Chemistry 2nd Paper">Chemistry 2nd Paper</option>
+                <option value="Biology 1st Paper">Biology 1st Paper</option>
+                <option value="Biology 2nd Paper">Biology 2nd Paper</option>
+                <option value="Mathematics 1st Paper">Mathematics 1st Paper</option>
+                <option value="Mathematics 2nd Paper">Mathematics 2nd Paper</option>
                 <option value="Other">Other</option>
               </select>
             </div>

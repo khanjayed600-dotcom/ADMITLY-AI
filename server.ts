@@ -300,7 +300,13 @@ async function startServer() {
   // --- Protected Student App Routes ---
 
   app.get('/api/bootstrap', requireStudent, (req: StudentRequest, res) => {
-    res.json(getBootstrapData(req.studentUser!.id));
+    try {
+      res.json(getBootstrapData(req.studentUser!.id));
+    } catch (err) {
+      res.status(500).json({
+        error: err instanceof Error ? err.message : 'ড্যাশবোর্ডের তথ্য লোড করা যায়নি।',
+      });
+    }
   });
 
   app.post('/api/daily-challenge/answer', requireStudent, (req: StudentRequest, res) => {
@@ -1584,6 +1590,10 @@ async function startServer() {
 
   app.get('/api/admin/exams/:id/attempts', requireAdmin, (req, res) => {
     res.json({ attempts: getExamAttemptsByExam(req.params.id) });
+  });
+
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'API endpoint not found.' });
   });
 
   if (process.env.NODE_ENV !== 'production') {

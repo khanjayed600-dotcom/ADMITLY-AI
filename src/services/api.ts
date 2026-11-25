@@ -75,17 +75,25 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     },
   });
 
-  const data = await res.json().catch(() => ({}));
+  const contentType = res.headers.get('content-type') || '';
   if (!res.ok) {
+    const errPayload = contentType.includes('application/json')
+      ? await res.json().catch(() => ({}))
+      : {};
     const message =
-      (data as { error?: string }).error ||
+      (errPayload as { error?: string }).error ||
       `অনুরোধ সম্পন্ন হয়নি (${res.status})`;
     const err = new Error(message) as Error & { code?: string; status?: number };
-    err.code = (data as { code?: string }).code;
+    err.code = (errPayload as { code?: string }).code;
     err.status = res.status;
     throw err;
   }
-  return data as T;
+
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new Error('সার্ভার থেকে সঠিক তথ্য পাওয়া যায়নি। অনুগ্রহ করে পৃষ্ঠাটি রিফ্রেশ করুন।');
+  }
 }
 
 export const api = {
