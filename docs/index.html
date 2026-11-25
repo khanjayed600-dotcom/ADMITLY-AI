@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ADMITLY AI — Deployment Guide</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        background: #f7f8fc;
+        color: #172033;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        padding: 24px;
+      }
+      .card {
+        max-width: 640px;
+        width: 100%;
+        background: #ffffff;
+        border: 1px solid #e8ecf3;
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 8px 24px rgba(23, 32, 51, 0.06);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+      }
+      p {
+        margin: 0 0 14px;
+        color: #475569;
+        line-height: 1.6;
+        font-size: 14px;
+      }
+      pre {
+        margin: 0;
+        padding: 14px;
+        border-radius: 10px;
+        background: #0f172a;
+        color: #e2e8f0;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>ADMITLY AI</h1>
+      <p>
+        This repository is a full-stack Node.js + Express + SQLite + React application.
+        Static GitHub Pages hosting cannot run the Express API server, SQLite database, or server-side Gemini AI routes.
+      </p>
+      <p>
+        Run locally or deploy to a Node.js 22+ host (Render, Railway, Fly.io, Cloud Run, or VPS):
+      </p>
+      <pre>npm install
+npm run build
+NODE_ENV=production npm start</pre>
+    </main>
+  </body>
+</html>
